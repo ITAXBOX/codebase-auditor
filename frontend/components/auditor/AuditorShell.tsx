@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ingestRepo, type ScanStage } from '@/lib/github';
+import type { AuditReport } from '@/lib/audit-types';
 import type { ScanPhase } from './ScanProgress';
 import RepoInput from './RepoInput';
 import ScanProgress from './ScanProgress';
@@ -21,7 +22,7 @@ export default function AuditorShell() {
   const [appPhase, setAppPhase]     = useState<AppPhase>('idle');
   const [scanPhase, setScanPhase]   = useState<ScanPhase>('fetching-tree');
   const [currentRepo, setCurrentRepo] = useState('');
-  const [report, setReport]         = useState<Record<string, unknown> | null>(null);
+  const [report, setReport]         = useState<AuditReport | null>(null);
   const [sessionId, setSessionId]   = useState('');
   const [error, setError]           = useState('');
   const [chatOpen, setChatOpen]     = useState(false);

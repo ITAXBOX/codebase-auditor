@@ -52,42 +52,47 @@ Analyze the repository and return ONLY a valid JSON object with NO markdown fenc
 Use this exact schema:
 
 {{
-  "repoName": "{repo}",
-  "overallScore": "B+",
+  "repo": "{repo}",
+  "score": "B+",
+  "score_rationale": "One sentence explaining why this score was assigned.",
   "summary": "2-3 sentence executive summary: what the project is, its maturity level, and biggest strength/weakness.",
   "stats": {{
-    "totalFiles": {total_files},
-    "criticalIssues": 0,
+    "total_files": {total_files},
+    "critical": 0,
     "warnings": 0,
+    "info": 0,
     "recommendations": 0
   }},
   "architecture": [
     {{
       "component": "Training Pipeline",
+      "status": "found | partial | missing",
       "description": "What was found or clearly inferred, or 'Not found' if absent.",
-      "files": ["relative/path.py"],
-      "confidence": "high | medium | low | missing"
+      "key_files": ["relative/path.py"]
     }}
   ],
   "issues": [
     {{
       "severity": "critical | warning | info",
+      "category": "reproducibility | config | testing | security | structure | deps",
       "title": "Short issue title",
-      "description": "Clear explanation of the problem and its consequence.",
+      "detail": "Clear explanation of the problem and its consequence.",
       "location": "filename or pattern (e.g. config/*.yaml)"
     }}
   ],
   "recommendations": [
     {{
+      "priority": 1,
       "title": "Action title",
-      "description": "Specific, actionable step with concrete example where possible.",
-      "impact": "high | medium | low"
+      "detail": "Specific, actionable step with concrete example where possible.",
+      "impact": "high | medium | low",
+      "effort": "low | medium | high"
     }}
   ]
 }}
 
 ## Architecture Components to Evaluate
-Always include ALL of these, using confidence=missing if not found:
+Always include ALL of these, using status=missing if not found:
 Training Pipeline, Inference/Serving, Model Definition, Configuration Management,
 Data Pipeline, Test Suite, Deployment/CI-CD, Dependency Management
 
@@ -112,6 +117,6 @@ C  = Functional but significant MLOps debt
 D  = Fragile, hard to reproduce, major gaps
 F  = Broken, insecure, or completely unstructured
 
-Set stats.criticalIssues / warnings / recommendations to match the actual counts in your arrays.
+Set stats.critical / warnings / info / recommendations to match the actual counts in your issues and recommendations arrays. Assign sequential priority numbers (1, 2, 3...) to recommendations.
 Respond with ONLY the JSON object.
 """

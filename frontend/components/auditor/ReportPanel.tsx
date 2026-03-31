@@ -1,41 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-
-interface ArchComp {
-  component: string; description: string;
-  files?: string[]; key_files?: string[];
-  confidence?: string; status?: string;
-}
-interface Issue {
-  severity: string; title: string;
-  detail?: string; description?: string; location?: string;
-}
-interface Rec {
-  priority?: number; title: string;
-  detail?: string; description?: string;
-  impact?: string; effort?: string;
-}
-interface ReportData {
-  repo?: string; repoName?: string;
-  score?: string; overallScore?: string;
-  summary?: string; score_rationale?: string;
-  stats?: Record<string, number>;
-  architecture?: ArchComp[];
-  issues?: Issue[];
-  recommendations?: Rec[];
-}
-
-function getScore(r: ReportData) { return r.score ?? r.overallScore ?? '?'; }
-function getRepo(r: ReportData)  { return r.repo ?? r.repoName ?? ''; }
-function getFiles(c: ArchComp)   { return c.key_files ?? c.files ?? []; }
-function getStatus(c: ArchComp)  { return c.status ?? c.confidence ?? 'missing'; }
-function getText(i: Issue | Rec) { return (i as Issue).detail ?? (i as Issue).description ?? ''; }
-function getStat(s: Record<string,number>|undefined, ...keys: string[]) {
-  if (!s) return 0;
-  for (const k of keys) if (s[k] !== undefined) return s[k];
-  return 0;
-}
+import type { AuditReport, ArchComponent, AuditIssue, Recommendation } from '@/lib/audit-types';
 
 function scoreColor(s: string) {
   const g = s?.[0]?.toUpperCase();
@@ -47,9 +13,9 @@ function scoreColor(s: string) {
 }
 
 function statusStyle(s: string) {
-  if (s === 'found'   || s === 'high')   return { border: 'rgba(82,212,138,0.3)',  left: '#52d48a', label: 'found',   lc: '#52d48a' };
-  if (s === 'partial' || s === 'medium') return { border: 'rgba(240,168,50,0.3)',  left: '#f0a832', label: 'partial', lc: '#f0a832' };
-  return                                        { border: 'rgba(255,94,94,0.2)',   left: '#ff5e5e', label: 'missing', lc: '#ff5e5e' };
+  if (s === 'found')    return { border: 'rgba(82,212,138,0.3)',  left: '#52d48a', label: 'found',   lc: '#52d48a' };
+  if (s === 'partial')  return { border: 'rgba(240,168,50,0.3)',  left: '#f0a832', label: 'partial', lc: '#f0a832' };
+  return                       { border: 'rgba(255,94,94,0.2)',   left: '#ff5e5e', label: 'missing', lc: '#ff5e5e' };
 }
 
 function severityStyle(s: string) {
@@ -82,9 +48,9 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ArchCard({ comp }: { comp: ArchComp }) {
-  const ss = statusStyle(getStatus(comp));
-  const files = getFiles(comp);
+function ArchCard({ comp }: { comp: ArchComponent }) {
+  const ss = statusStyle(comp.status);
+  const files = comp.key_files;
   return (
     <div style={{
       background: 'var(--surface2)', borderRadius: 12,
@@ -112,7 +78,7 @@ function ArchCard({ comp }: { comp: ArchComp }) {
   );
 }
 
-function IssueItem({ issue }: { issue: Issue }) {
+function IssueItem({ issue }: { issue: AuditIssue }) {
   const [open, setOpen] = useState(false);
   const ss = severityStyle(issue.severity);
   return (
@@ -144,14 +110,14 @@ function IssueItem({ issue }: { issue: Issue }) {
       </button>
       {open && (
         <div style={{ padding: '0 18px 16px 54px' }}>
-          <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.7 }}>{getText(issue)}</p>
+          <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.7 }}>{issue.detail}</p>
         </div>
       )}
     </div>
   );
 }
 
-function RecItem({ rec, index }: { rec: Rec; index: number }) {
+function RecItem({ rec, index }: { rec: Recommendation; index: number }) {
   const [open, setOpen] = useState(false);
   const ic = impactStyle(rec.impact);
   return (
@@ -166,7 +132,7 @@ function RecItem({ rec, index }: { rec: Rec; index: number }) {
           background: 'var(--accent-dim)', border: '1px solid rgba(212,245,90,0.25)',
           borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 12, fontWeight: 700, fontFamily: 'var(--mono)', color: 'var(--accent)', marginTop: 1,
-        }}>{rec.priority ?? index + 1}</span>
+        }}>{rec.priority}</span>
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 7 }}>{rec.title}</p>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
@@ -188,15 +154,15 @@ function RecItem({ rec, index }: { rec: Rec; index: number }) {
       </button>
       {open && (
         <div style={{ padding: '0 18px 16px 58px' }}>
-          <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.7 }}>{getText(rec)}</p>
+          <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.7 }}>{rec.detail}</p>
         </div>
       )}
     </div>
   );
 }
 
-export default function ReportPanel({ report }: { report: ReportData }) {
-  const score    = getScore(report);
+export default function ReportPanel({ report }: { report: AuditReport }) {
+  const score    = report.score;
   const issues   = report.issues ?? [];
   const critical = issues.filter(i => i.severity === 'critical');
   const warnings = issues.filter(i => i.severity === 'warning');
@@ -223,7 +189,7 @@ export default function ReportPanel({ report }: { report: ReportData }) {
           </div>
           <div style={{ flex: 1, minWidth: 200, paddingTop: 8 }}>
             <p style={{ fontSize: 13, fontFamily: 'var(--mono)', color: 'var(--accent)', marginBottom: 10, letterSpacing: '0.02em' }}>
-              {getRepo(report)}
+              {report.repo}
             </p>
             <p style={{ fontSize: 15, color: 'var(--muted)', lineHeight: 1.75 }}>{report.summary}</p>
             {report.score_rationale && (
@@ -238,11 +204,11 @@ export default function ReportPanel({ report }: { report: ReportData }) {
           borderTop: '1px solid var(--border)',
         }}>
           {[
-            { val: getStat(stats,'total_files','totalFiles'), label: 'files',    c: 'var(--text)' },
-            { val: getStat(stats,'critical','criticalIssues'), label: 'critical', c: 'var(--red)' },
-            { val: getStat(stats,'warnings'),                  label: 'warnings', c: 'var(--amber)' },
-            { val: getStat(stats,'info'),                      label: 'info',     c: 'var(--blue)' },
-            { val: getStat(stats,'recommendations'),           label: 'recs',     c: 'var(--accent)' },
+            { val: stats?.total_files     ?? 0, label: 'files',    c: 'var(--text)' },
+            { val: stats?.critical        ?? 0, label: 'critical', c: 'var(--red)' },
+            { val: stats?.warnings        ?? 0, label: 'warnings', c: 'var(--amber)' },
+            { val: stats?.info            ?? 0, label: 'info',     c: 'var(--blue)' },
+            { val: stats?.recommendations ?? 0, label: 'recs',     c: 'var(--accent)' },
           ].map((s, i, arr) => (
             <div key={i} style={{
               flex: 1, textAlign: 'center',
