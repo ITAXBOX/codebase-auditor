@@ -3,12 +3,21 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
 import boto3
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 from audit_routes import create_audit_router
 from storage import make_repo
 
 load_dotenv()
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,7 +43,7 @@ MEMORY_DIR = os.getenv("MEMORY_DIR", "../memory")
 repo = make_repo(use_s3=USE_S3, s3_bucket=S3_BUCKET, memory_dir=MEMORY_DIR)
 
 app.include_router(
-    create_audit_router(bedrock_client, BEDROCK_MODEL_ID, repo.load, repo.save)
+    create_audit_router(bedrock_client, BEDROCK_MODEL_ID, repo.load, repo.save, limiter)
 )
 
 

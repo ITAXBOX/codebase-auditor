@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import List
 import uuid
@@ -148,11 +148,12 @@ def _call_bedrock_audit(
         raise HTTPException(status_code=500, detail=f"Unexpected Bedrock error: {str(e)}")
 
 
-def create_audit_router(bedrock_client, model_id: str, load_conv, save_conv):
+def create_audit_router(bedrock_client, model_id: str, load_conv, save_conv, limiter):
     router = APIRouter(prefix="/audit", tags=["audit"])
 
     @router.post("/start", response_model=AuditStartResponse)
-    async def audit_start(req: AuditStartRequest):
+    @limiter.limit("5/minute")
+    async def audit_start(request: Request, req: AuditStartRequest):
         session_id = str(uuid.uuid4())
         user_message = _build_ingest_user_message(req)
 
@@ -198,7 +199,8 @@ def create_audit_router(bedrock_client, model_id: str, load_conv, save_conv):
         return AuditStartResponse(session_id=session_id, report=report)
 
     @router.post("/chat", response_model=AuditChatResponse)
-    async def audit_chat(req: AuditChatRequest):
+    @limiter.limit("30/minute")
+    async def audit_chat(request: Request, req: AuditChatRequest):
         conversation = load_conv(req.session_id)
         if not conversation:
             raise HTTPException(
